@@ -1,0 +1,75 @@
+---
+title: "2022-01-18_chocolate_bar_rating"
+author: "Faqiang"
+date: "1/18/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(tidyverse)
+library(tidytext)
+library(ggwordcloud)
+chocolate <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv')
+
+```
+
+```{r}
+char_rating <- chocolate %>%
+  separate_rows(most_memorable_characteristics) %>% 
+  select(most_memorable_characteristics,rating) %>% 
+  anti_join(tidytext::stop_words,by = c("most_memorable_characteristics"="word")) %>% 
+  mutate(most_memorable_characteristics = fct_lump_min(most_memorable_characteristics,min = 10))
+
+  
+low_rating <- char_rating %>% 
+  group_by(most_memorable_characteristics) %>% 
+  summarise(rating_mean = mean(rating)) %>% 
+  slice_min(rating_mean,n = 20) %>% 
+  inner_join(char_rating) %>% 
+  mutate(category = "low Rating")
+
+high_rating <- char_rating %>% 
+  group_by(most_memorable_characteristics) %>% 
+  summarise(rating_mean = mean(rating)) %>% 
+  slice_max(rating_mean,n = 20)%>% 
+  inner_join(char_rating) %>% 
+  mutate(category = "high Rating")
+
+
+
+combined_rating <- bind_rows(low_rating,high_rating) %>% 
+  count(most_memorable_characteristics,category)
+
+set.seed(42)
+ggplot(
+  combined_rating,
+  aes(
+    label = most_memorable_characteristics, size = n,
+    color = category
+  )
+) +
+  geom_text_wordcloud_area() +
+  scale_size(range=c(2,12)) +
+  scale_color_manual(values = c("green4","orangered4"))+
+  facet_wrap(~category,nrow = 1)+
+  labs(
+    title = "Chocolate Bar rating",
+    subtitle = "TidyTuesday (2022-01-18)",
+    caption = "F. Wu"
+  )+
+  theme_minimal()+
+  theme(
+    plot.background = element_rect(fill = "grey20"),
+    strip.text = element_text(color = "grey70",size = 12,face = "bold"),
+    plot.title = element_text(hjust = .5,size = 20,face = "bold"),
+    plot.subtitle = element_text(hjust = .5,size = 8)
+  )
+
+
+
+```
+
+
